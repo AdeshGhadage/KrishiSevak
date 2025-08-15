@@ -1,7 +1,8 @@
 # KrishiSevak
 
-Theme Name: Krishi Sevak - An intelligent agricultural advisor
-Theme Benefits: Our solution directly empowers Indian farmers with instant, actionable agricultural intelligence that addresses their daily decision-making process. This will help them make their own informed decisions without having to rely on any other person or organisation.
+Krishi Sevak - An intelligent agricultural advisor
+
+Our solution directly empowers Indian farmers with instant, actionable agricultural intelligence that addresses their daily decision-making process. This will help them make their own informed decisions without having to rely on any other person or organisation.
 Farmer-centric decision support - Context-aware advice to farmers for any queries related to crop type, crop disease and their preventive measures, market fertilizer prices, government schemes and local climate.
 
 Localized language support - Handles multiple language support in terms of speech as well as text for better accessibility in the rural parts of India.
