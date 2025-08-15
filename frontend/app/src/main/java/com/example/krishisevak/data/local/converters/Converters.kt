@@ -4,6 +4,8 @@ import androidx.room.TypeConverter
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.text.SimpleDateFormat
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 class Converters {
@@ -70,5 +72,22 @@ class Converters {
     @TypeConverter
     fun toBoolean(value: Int): Boolean {
         return value == 1
+    }
+    
+    // LocalDateTime converters
+    @TypeConverter
+    fun fromLocalDateTime(value: LocalDateTime?): String? {
+        return value?.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+    }
+
+    @TypeConverter
+    fun toLocalDateTime(value: String?): LocalDateTime? {
+        return value?.let { 
+            try {
+                LocalDateTime.parse(it, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            } catch (e: Exception) {
+                null
+            }
+        }
     }
 }

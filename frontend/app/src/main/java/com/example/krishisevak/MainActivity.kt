@@ -12,7 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.krishisevak.ui.onboarding.OnboardingScreen
+import com.example.krishisevak.ui.onboarding.SimpleOnboardingScreen
 import com.example.krishisevak.ui.onboarding.OnboardingViewModel
 import com.example.krishisevak.ui.chat.ChatScreen
 import com.example.krishisevak.ui.theme.KrishiSevakTheme
@@ -56,7 +56,7 @@ fun KrishiSevakApp() {
         }
         false -> {
             // Show onboarding
-            OnboardingScreen(
+            SimpleOnboardingScreen(
                 onOnboardingComplete = {
                     isOnboarded = true
                 },

@@ -6,15 +6,12 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import android.content.Context
 import com.example.krishisevak.data.local.converters.Converters
-import com.example.krishisevak.data.local.entities.*
-import com.example.krishisevak.data.local.dao.*
+import com.example.krishisevak.data.local.entities.UserEntity
+import com.example.krishisevak.data.local.dao.UserDao
 
 @Database(
     entities = [
-        UserEntity::class,
-        LandHoldingEntity::class,
-        CropEntity::class,
-        UserPreferencesEntity::class
+        UserEntity::class
     ],
     version = 1,
     exportSchema = false
@@ -23,9 +20,6 @@ import com.example.krishisevak.data.local.dao.*
 abstract class KrishiSevakDatabase : RoomDatabase() {
     
     abstract fun userDao(): UserDao
-    abstract fun landHoldingDao(): LandHoldingDao
-    abstract fun cropDao(): CropDao
-    abstract fun userPreferencesDao(): UserPreferencesDao
 
     companion object {
         @Volatile

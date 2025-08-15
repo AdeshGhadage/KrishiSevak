@@ -13,7 +13,12 @@ class OnboardingViewModel(application: Application) : AndroidViewModel(applicati
     
     fun saveUserData(user: UserEntity) {
         viewModelScope.launch {
-            userDao.insertUser(user)
+            try {
+                userDao.insertUser(user)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // Handle database errors gracefully
+            }
         }
     }
     
@@ -22,6 +27,7 @@ class OnboardingViewModel(application: Application) : AndroidViewModel(applicati
             val user = userDao.getUser(1)
             user?.isOnboardingComplete == true
         } catch (e: Exception) {
+            e.printStackTrace()
             false
         }
     }
