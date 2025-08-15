@@ -7,18 +7,6 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface UserDao {
     
-    @Query("SELECT * FROM users WHERE id = :userId")
-    suspend fun getUserById(userId: String): UserEntity?
-    
-    @Query("SELECT * FROM users WHERE phoneNumber = :phoneNumber")
-    suspend fun getUserByPhoneNumber(phoneNumber: String): UserEntity?
-    
-    @Query("SELECT * FROM users WHERE aadhaarNumber = :aadhaarNumber")
-    suspend fun getUserByAadhaar(aadhaarNumber: String): UserEntity?
-    
-    @Query("SELECT * FROM users WHERE isActive = 1")
-    fun getAllActiveUsers(): Flow<List<UserEntity>>
-    
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUser(user: UserEntity)
     
@@ -28,15 +16,24 @@ interface UserDao {
     @Delete
     suspend fun deleteUser(user: UserEntity)
     
-    @Query("UPDATE users SET lastActive = :lastActive WHERE id = :userId")
-    suspend fun updateLastActive(userId: String, lastActive: java.time.LocalDateTime)
+    @Query("SELECT * FROM users WHERE id = :id")
+    suspend fun getUser(id: Int): UserEntity?
     
-    @Query("UPDATE users SET isActive = :isActive WHERE id = :userId")
-    suspend fun updateUserStatus(userId: String, isActive: Boolean)
+    @Query("SELECT * FROM users ORDER BY lastActive DESC")
+    fun getAllUsers(): Flow<List<UserEntity>>
+    
+    @Query("UPDATE users SET lastActive = :timestamp WHERE id = :userId")
+    suspend fun updateLastActive(userId: Int, timestamp: java.time.LocalDateTime)
     
     @Query("SELECT COUNT(*) FROM users")
     suspend fun getUserCount(): Int
     
-    @Query("SELECT * FROM users WHERE village = :village AND district = :district")
-    fun getUsersByLocation(village: String, district: String): Flow<List<UserEntity>>
+    @Query("DELETE FROM users WHERE id = :userId")
+    suspend fun deleteUserById(userId: Int)
+    
+    @Query("SELECT * FROM users WHERE isOnboardingComplete = 1 LIMIT 1")
+    suspend fun getOnboardedUser(): UserEntity?
+    
+    @Query("UPDATE users SET isOnboardingComplete = 1 WHERE id = :userId")
+    suspend fun markOnboardingComplete(userId: Int)
 }

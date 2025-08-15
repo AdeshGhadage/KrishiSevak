@@ -10,29 +10,16 @@ import java.time.LocalDateTime
 @TypeConverters(Converters::class)
 data class UserEntity(
     @PrimaryKey
-    val id: String,
+    val id: Int,
     val name: String,
-    val phoneNumber: String,
-    val email: String?,
-    val aadhaarNumber: String?,
     val age: Int,
-    val gender: String,
-    val education: String,
-    val farmingExperience: Int,
-    val village: String,
-    val panchayat: String?,
-    val block: String,
-    val district: String,
-    val state: String,
-    val pincode: String,
-    val latitude: Double?,
-    val longitude: Double?,
+    val landArea: Double,
+    val latitude: Double,
+    val longitude: Double,
     val preferredLanguage: String,
-    val preferredUnits: String,
-    val theme: String,
-    val createdAt: LocalDateTime,
-    val lastActive: LocalDateTime,
-    val isActive: Boolean
+    val isOnboardingComplete: Boolean = false,
+    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val lastActive: LocalDateTime = LocalDateTime.now()
 )
 
 @Entity(tableName = "land_holdings")
