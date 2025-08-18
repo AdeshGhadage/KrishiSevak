@@ -17,8 +17,6 @@ import com.example.krishisevak.ui.onboarding.OnboardingViewModel
 import com.example.krishisevak.ui.chat.ChatScreen
 import com.example.krishisevak.ui.theme.KrishiSevakTheme
 import kotlinx.coroutines.launch
-import com.example.krishisevak.data.local.KrishiSevakDatabase
-import com.example.krishisevak.KrishiSevakApplication
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,16 +36,11 @@ fun KrishiSevakApp() {
     val viewModel: OnboardingViewModel = viewModel()
     var isOnboarded by remember { mutableStateOf<Boolean?>(null) }
     val scope = rememberCoroutineScope()
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val db = remember { KrishiSevakDatabase.getDatabase(context) }
     
     // Check onboarding status
     LaunchedEffect(Unit) {
         scope.launch {
             isOnboarded = viewModel.isUserOnboarded()
-            val user = db.userDao().getOnboardedUser()
-            val lang = mapLanguageToCode(user?.preferredLanguage)
-            KrishiSevakApplication.updateLocale(lang)
         }
     }
     

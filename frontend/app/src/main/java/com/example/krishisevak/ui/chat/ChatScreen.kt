@@ -31,6 +31,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.graphics.toArgb
 import android.media.MediaPlayer
 import android.media.MediaRecorder
 import androidx.compose.runtime.DisposableEffect
@@ -177,7 +179,7 @@ fun ChatScreen() {
         // Add welcome message
         messages = listOf(
             ChatMessage(
-                text = context.getString(com.example.krishisevak.R.string.chat_welcome_message),
+                text = "Welcome to KrishiSevak! 🌾\n\nI'm your AI farming assistant. You can:\n• Type your farming questions\n• Take photos of plants for disease detection\n• Use voice commands in your local language\n\nHow can I help you today?",
                 isFromUser = false
             )
         )
@@ -271,7 +273,7 @@ fun ChatScreen() {
                         modifier = Modifier.weight(1f),
                         placeholder = { 
                             Text(
-                                text = context.getString(com.example.krishisevak.R.string.chat_hint),
+                                text = "Ask anything about farming...",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
@@ -291,7 +293,11 @@ fun ChatScreen() {
                                             
                                             scope.launch {
                                                 val responseText = try {
-                                                    val req = ChatRequestDto(message = userMessage.text)
+                                                    val user = db.userDao().getOnboardedUser()
+                                                    val contextStr = if (user != null) {
+                                                        "Farmer Name: ${user.name}; Age: ${user.age}; Land Area(acres): ${user.landArea}; Location(lat,lon): ${user.latitude}, ${user.longitude}; Preferred Language: ${user.preferredLanguage}"
+                                                    } else null
+                                                    val req = ChatRequestDto(message = userMessage.text, userContext = contextStr)
                                                     val res = withContext(Dispatchers.IO) {
                                                         NetworkModule.backendApiService.chat(req)
                                                     }
@@ -305,28 +311,13 @@ fun ChatScreen() {
                                                 )
                                                 messages = messages + response
                                                 scope.launch { listState.animateScrollToItem(messages.size - 1) }
-                                                // Optionally speak the response via TTS
-                                                scope.launch {
-                                                    try {
-                                                        val ttsResp = withContext(Dispatchers.IO) {
-                                                            NetworkModule.backendApiService.tts(responseText, preferredLanguage)
-                                                        }
-                                                        if (ttsResp.isSuccessful) {
-                                                            val body = ttsResp.body()
-                                                            if (body != null) {
-                                                                val audioOut = saveResponseToFile(context, body)
-                                                                playAudio(MediaPlayer(), audioOut)
-                                                            }
-                                                        }
-                                                    } catch (_: Exception) {}
-                                                }
                                             }
                                         }
                                     }
                                 ) {
                                     Icon(
                                         Icons.Default.Send,
-                                        contentDescription = context.getString(com.example.krishisevak.R.string.send),
+                                        contentDescription = "Send",
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -364,7 +355,7 @@ fun ChatScreen() {
                     ) {
                         Icon(
                             Icons.Default.Camera,
-                            contentDescription = context.getString(com.example.krishisevak.R.string.take_photo),
+                            contentDescription = "Take Photo",
                             tint = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
@@ -389,13 +380,13 @@ fun ChatScreen() {
                                         recordingFile = outFile
                                         isRecording = true
                                         messages = messages + ChatMessage(
-                                            text = context.getString(com.example.krishisevak.R.string.recording),
+                                            text = "Recording...",
                                             isFromUser = false
                                         )
                                     } catch (e: Exception) {
                                         isRecording = false
                                         messages = messages + ChatMessage(
-                                            text = context.getString(com.example.krishisevak.R.string.failed_to_start_recording, e.message ?: ""),
+                                            text = "Failed to start recording: ${e.message}",
                                             isFromUser = false
                                         )
                                     }
@@ -411,16 +402,17 @@ fun ChatScreen() {
                                     isRecording = false
                                     if (outFile != null && outFile.exists()) {
                                         val userVoiceMsg = ChatMessage(
-                                            text = context.getString(com.example.krishisevak.R.string.voice_message_sent),
+                                            text = "[Voice message sent]",
                                             isFromUser = true,
                                             isVoiceMessage = true
                                         )
                                         messages = messages + userVoiceMsg
                                         scope.launch {
-                                            val resultText = try {
+                                            try {
                                                 val sessionBody = "default".toRequestBody("text/plain".toMediaType())
-                                                val ttsBody = "false".toRequestBody("text/plain".toMediaType())
-                                                val langBody: RequestBody? = preferredLanguage.toRequestBody("text/plain".toMediaType())
+                                                val ttsBody = "true".toRequestBody("text/plain".toMediaType())
+                                                val sttLang = mapToWhisperLanguageCode(preferredLanguage)
+                                                val langBody: RequestBody? = sttLang.toRequestBody("text/plain".toMediaType())
                                                 val audioPart = MultipartBody.Part.createFormData(
                                                     name = "audio",
                                                     filename = outFile.name,
@@ -436,47 +428,22 @@ fun ChatScreen() {
                                                 }
                                                 if (resp.isSuccessful) {
                                                     val body = resp.body()
-                                                    val contentType = resp.headers()["Content-Type"] ?: ""
-                                                    if (contentType.contains("application/json") && body != null) {
-                                                        val jsonStr = body.string()
-                                                        val obj = JSONObject(jsonStr)
-                                                        val reply = obj.optString("reply", "")
-                                                        if (reply.isNotBlank()) {
-                                                            try {
-                                                                val ttsResp = withContext(Dispatchers.IO) {
-                                                                    NetworkModule.backendApiService.tts(reply, preferredLanguage)
-                                                                }
-                                                                if (ttsResp.isSuccessful) {
-                                                                    val ttsBody = ttsResp.body()
-                                                                    if (ttsBody != null) {
-                                                                        val audioOut = saveResponseToFile(context, ttsBody)
-                                                                        playAudio(mediaPlayer, audioOut)
-                                                                    }
-                                                                }
-                                                            } catch (_: Exception) {}
-                                                        }
-                                                        reply.ifBlank { "(empty reply)" }
-                                                    } else if (body != null) {
+                                                    if (body != null) {
                                                         val audioOut = saveResponseToFile(context, body)
                                                         playAudio(mediaPlayer, audioOut)
-                                                        "Voice processed."
                                                     } else {
-                                                        "Voice processing failed: empty body"
+                                                        messages = messages + ChatMessage(text = "Voice processing failed: empty body", isFromUser = false)
                                                     }
                                                 } else {
-                                                    "Voice processing failed: ${resp.code()}"
+                                                    messages = messages + ChatMessage(text = "Voice processing failed: ${resp.code()}", isFromUser = false)
                                                 }
                                             } catch (e: Exception) {
-                                                "Voice processing error: ${e.message ?: "unknown error"}"
+                                                messages = messages + ChatMessage(text = "Voice processing error: ${e.message ?: "unknown error"}", isFromUser = false)
                                             }
-                                            messages = messages + ChatMessage(
-                                                text = resultText,
-                                                isFromUser = false
-                                            )
                                         }
                                     } else {
                                         messages = messages + ChatMessage(
-                                            text = context.getString(com.example.krishisevak.R.string.no_recording_file),
+                                            text = "No recording file found",
                                             isFromUser = false
                                         )
                                     }
@@ -493,7 +460,7 @@ fun ChatScreen() {
                     ) {
                         Icon(
                             Icons.Default.Mic,
-                            contentDescription = if (isRecording) context.getString(com.example.krishisevak.R.string.stop_recording) else context.getString(com.example.krishisevak.R.string.start_recording),
+                            contentDescription = if (isRecording) "Stop Recording" else "Start Recording",
                             tint = if (isRecording) 
                                 MaterialTheme.colorScheme.onError 
                             else 
@@ -551,14 +518,26 @@ fun MessageBubble(message: ChatMessage) {
                 
                 // Text message
                 if (message.text.isNotEmpty()) {
-                    Text(
-                        text = message.text,
-                        color = if (message.isFromUser) 
-                            MaterialTheme.colorScheme.onPrimary 
-                        else 
-                            MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    if (message.isFromUser) {
+                        Text(
+                            text = message.text,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    } else {
+                        val botTextColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
+                        AndroidView(
+                            factory = { ctx ->
+                                android.widget.TextView(ctx).apply {
+                                    setTextColor(botTextColor)
+                                }
+                            },
+                            update = { tv ->
+                                val markwon = io.noties.markwon.Markwon.create(tv.context)
+                                markwon.setMarkdown(tv, message.text)
+                            }
+                        )
+                    }
                 }
                 
                 // Voice indicator
@@ -661,5 +640,23 @@ private fun mapLanguageToCode(name: String?): String {
         "kannada" -> "kn"
         "malayalam" -> "ml"
         else -> "en-in"
+    }
+}
+
+private fun mapToWhisperLanguageCode(langTag: String?): String {
+    // OpenAI Whisper expects ISO 639-1 like "en", "hi". Our mapLanguageToCode returns e.g. en-in.
+    val tag = (langTag ?: "en").lowercase()
+    return when {
+        tag.startsWith("en") -> "en"
+        tag.startsWith("hi") -> "hi"
+        tag.startsWith("bn") -> "bn"
+        tag.startsWith("mr") -> "mr"
+        tag.startsWith("ta") -> "ta"
+        tag.startsWith("te") -> "te"
+        tag.startsWith("kn") -> "kn"
+        tag.startsWith("ml") -> "ml"
+        tag.startsWith("gu") -> "gu"
+        tag.startsWith("pa") -> "pa"
+        else -> "en"
     }
 }

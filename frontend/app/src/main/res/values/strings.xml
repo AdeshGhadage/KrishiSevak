@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">KrishiSevak</string>
     <string name="welcome_title">Welcome to KrishiSevak</string>
-    <string name="welcome_subtitle">Let's set up your farming profile</string>
+    <string name="welcome_subtitle">Let\'s set up your farming profile</string>
     <string name="farmer_name">Farmer Name</string>
     <string name="age">Age</string>
     <string name="land_area">Land Area (in acres)</string>

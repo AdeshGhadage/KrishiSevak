@@ -20,6 +20,10 @@ android {
         
         // Enable multidex for large app
         multiDexEnabled = true
+
+        // Inject backend URL for physical devices on LAN; override with -PbackendUrl=http://<HOST_IP>:8000/
+        val backendUrl = (project.findProperty("backendUrl") as String?) ?: "https://13e8d9f96d5f.ngrok-free.app/"
+        buildConfigField("String", "BACKEND_BASE_URL", "\"$backendUrl\"")
     }
 
     buildTypes {
@@ -45,6 +49,7 @@ android {
         compose = true
         viewBinding = true
         dataBinding = true
+        buildConfig = true
     }
     
     composeOptions {
@@ -102,13 +107,14 @@ dependencies {
     // Location and Maps
     implementation(libs.androidx.play.services.location)
     implementation(libs.androidx.play.services.maps)
+
+    // Markdown rendering (Markwon via AndroidView)
+    implementation("io.noties.markwon:core:4.6.2")
     
     // Permissions
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.fragment.ktx)
     implementation("com.google.accompanist:accompanist-permissions:0.32.0")
-    // AppCompat for runtime locale switching
-    implementation("androidx.appcompat:appcompat:1.7.0")
     
     // Lifecycle and ViewModel
     implementation(libs.androidx.lifecycle.viewmodel.compose)

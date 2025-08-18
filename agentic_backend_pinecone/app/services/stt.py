@@ -50,12 +50,26 @@ def _transcribe_openai(audio_path: str, language: Optional[str]) -> str:
         files["language"] = (None, language)
     with httpx.Client(timeout=60) as client:
         r = client.post(url, headers=headers, files=files)
-        r.raise_for_status()
+        try:
+            r.raise_for_status()
+        except httpx.HTTPStatusError:
+            # Bubble up to let caller decide on fallback
+            raise
         data = r.json()
         return (data.get("text") or "").strip()
 
 def transcribe(audio_path: str, language: Optional[str] = None) -> str:
     provider = (settings.STT_PROVIDER or "local").lower()
     if provider == "openai":
-        return _transcribe_openai(audio_path, language)
+        try:
+            return _transcribe_openai(audio_path, language)
+        except Exception as e:
+            if settings.STT_FALLBACK_LOCAL_ON_ERROR:
+                # Attempt local fallback
+                try:
+                    return _transcribe_local(audio_path, language)
+                except Exception:
+                    pass
+            # Re-raise original error
+            raise
     return _transcribe_local(audio_path, language)

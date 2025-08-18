@@ -6,6 +6,7 @@ class ChatRequest(BaseModel):
     message: str
     stream: bool = Field(default=False)
     images_base64: Optional[List[str]] = None
+    user_context: Optional[str] = None
 
 class ChatResponse(BaseModel):
     text: str

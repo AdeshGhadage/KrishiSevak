@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
     OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "https://api.openai.com")
     OPENAI_WHISPER_MODEL: str = os.getenv("OPENAI_WHISPER_MODEL", "whisper-1")
+    STT_FALLBACK_LOCAL_ON_ERROR: bool = os.getenv("STT_FALLBACK_LOCAL_ON_ERROR", "true").lower() in ("1","true","yes")
 
     TTS_PROVIDER: str = os.getenv("TTS_PROVIDER", "espeak")  # espeak|elevenlabs
     ELEVENLABS_API_KEY: str | None = os.getenv("ELEVENLABS_API_KEY")

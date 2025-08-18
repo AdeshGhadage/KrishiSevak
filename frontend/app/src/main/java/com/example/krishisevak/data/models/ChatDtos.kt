@@ -6,7 +6,8 @@ data class ChatRequestDto(
 	@SerializedName("session_id") val sessionId: String = "default",
 	@SerializedName("message") val message: String,
 	@SerializedName("stream") val stream: Boolean = false,
-	@SerializedName("images_base64") val imagesBase64: List<String>? = null
+	@SerializedName("images_base64") val imagesBase64: List<String>? = null,
+	@SerializedName("user_context") val userContext: String? = null
 )
 
 data class ChatResponseDto(

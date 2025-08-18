@@ -43,9 +43,13 @@ async def chat(req: ChatRequest):
             yield {"event": "done", "data": ""}
         return EventSourceResponse(event_gen())
     else:
+        # Prepend one-time user context to first message in a session
+        user_text = req.message
+        if req.user_context:
+            user_text = f"[User context]\n{req.user_context}\n[/User context]\n\n{req.message}"
         result = get_agent().respond(
             session_id=req.session_id,
-            user_text=req.message,
+            user_text=user_text,
             images_base64=req.images_base64,
             stream=False
         )
@@ -62,10 +66,19 @@ async def voice_to_chat(session_id: str = Form("default"),
         f.write(await audio.read())
     try:
         text = transcribe(raw_path, language=language)
+        if not text.strip():
+            if tts:
+                out_path = synthesize_to_wav("Sorry, I couldn't hear anything. Please try again.", language=language)
+                ext = os.path.splitext(out_path)[1].lower()
+                media = "audio/mpeg" if ext == ".mp3" else "audio/wav"
+                fname = "reply.mp3" if ext == ".mp3" else "reply.wav"
+                return FileResponse(out_path, media_type=media, filename=fname)
+            return JSONResponse({"error": "empty_transcript", "transcript": text}, status_code=400)
+
         result = get_agent().respond(session_id=session_id, user_text=text, stream=False)
         reply = result["text"]
         if tts:
-            out_path = synthesize_to_wav(reply)
+            out_path = synthesize_to_wav(reply, language=language)
             # Decide media type by extension
             ext = os.path.splitext(out_path)[1].lower()
             media = "audio/mpeg" if ext == ".mp3" else "audio/wav"

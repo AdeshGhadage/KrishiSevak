@@ -36,6 +36,8 @@ def _synthesize_elevenlabs(text: str, language: str | None = None) -> str:
     if not api_key:
         raise RuntimeError("ELEVENLABS_API_KEY not set")
     voice_id = settings.ELEVENLABS_VOICE_ID
+    if not voice_id or not voice_id.strip():
+        raise RuntimeError("ELEVENLABS_VOICE_ID not set")
     model_id = settings.ELEVENLABS_MODEL_ID
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
     headers = {

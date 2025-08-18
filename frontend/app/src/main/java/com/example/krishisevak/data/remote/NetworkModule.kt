@@ -2,6 +2,7 @@ package com.example.krishisevak.data.remote
 
 import com.example.krishisevak.data.remote.api.WeatherApiService
 import com.example.krishisevak.data.remote.api.BackendApiService
+import com.example.krishisevak.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -11,9 +12,8 @@ import java.util.concurrent.TimeUnit
 object NetworkModule {
     
     private const val WEATHER_BASE_URL = "https://api.open-meteo.com/"
-    // For Android Emulator talking to host machine backend, use 10.0.2.2
-    // For physical device on same LAN, replace with your machine IP, e.g. http://192.168.1.10:8000/
-    private const val BACKEND_BASE_URL = "http://10.0.2.2:8000/"
+    // Read backend base URL from BuildConfig so it can be overridden at build time
+    private val BACKEND_BASE_URL: String = BuildConfig.BACKEND_BASE_URL
     
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor(HttpLoggingInterceptor().apply {
