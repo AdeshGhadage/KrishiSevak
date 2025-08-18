@@ -3,7 +3,6 @@ package com.example.krishisevak.ui.chat
 import android.Manifest
 import android.graphics.Bitmap
 import android.net.Uri
-import androidx.annotation.OptIn
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -37,10 +36,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
-import okhttp3.RequestBody
-import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.text.SimpleDateFormat
 import java.util.*
@@ -100,9 +96,9 @@ fun ChatScreen() {
                     val res = withContext(Dispatchers.IO) {
                         NetworkModule.backendApiService.classifyImage(part)
                     }
-                    "Detected: ${'$'}{res.label} (confidence ${(res.score * 100).toInt()}%)"
+                    "Detected: ${res.label} (confidence ${(res.score * 100).toInt()}%)"
                 } catch (e: Exception) {
-                    "Image analysis failed: ${'$'}{e.message ?: "unknown error"}"
+                    "Image analysis failed: ${e.message ?: "unknown error"}"
                 }
                 val response = ChatMessage(
                     text = classifyResult,
@@ -235,7 +231,7 @@ fun ChatScreen() {
                                                     }
                                                     res.text
                                                 } catch (e: Exception) {
-                                                    "Chat request failed: ${'$'}{e.message ?: "unknown error"}"
+                                                    "Chat request failed: ${e.message ?: "unknown error"}"
                                                 }
                                                 val response = ChatMessage(
                                                     text = responseText,
