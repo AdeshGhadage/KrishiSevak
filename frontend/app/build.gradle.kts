@@ -107,6 +107,8 @@ dependencies {
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.fragment.ktx)
     implementation("com.google.accompanist:accompanist-permissions:0.32.0")
+    // AppCompat for runtime locale switching
+    implementation("androidx.appcompat:appcompat:1.7.0")
     
     // Lifecycle and ViewModel
     implementation(libs.androidx.lifecycle.viewmodel.compose)

@@ -2,6 +2,7 @@ package com.example.krishisevak.ui.chat
 
 import android.Manifest
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -30,18 +31,27 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.media.MediaPlayer
+import android.media.MediaRecorder
+import androidx.compose.runtime.DisposableEffect
 import com.example.krishisevak.data.models.ChatRequestDto
+import com.example.krishisevak.data.local.KrishiSevakDatabase
 import com.example.krishisevak.data.remote.NetworkModule
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.ResponseBody
 import java.text.SimpleDateFormat
 import java.util.*
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileOutputStream
+import org.json.JSONObject
 
 data class ChatMessage(
     val id: String = UUID.randomUUID().toString(),
@@ -61,9 +71,18 @@ fun ChatScreen() {
     var isRecording by remember { mutableStateOf(false) }
     var hasCameraPermission by remember { mutableStateOf(false) }
     var hasAudioPermission by remember { mutableStateOf(false) }
+    var mediaRecorder by remember { mutableStateOf<MediaRecorder?>(null) }
+    var recordingFile by remember { mutableStateOf<File?>(null) }
+    val mediaPlayer = remember { MediaPlayer() }
     
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val db = remember { KrishiSevakDatabase.getDatabase(context) }
+    var preferredLanguage by remember { mutableStateOf("en") }
+    LaunchedEffect(Unit) {
+        val user = db.userDao().getOnboardedUser()
+        preferredLanguage = mapLanguageToCode(user?.preferredLanguage)
+    }
     
     // Permission launchers
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
@@ -110,6 +129,46 @@ fun ChatScreen() {
         }
     }
     
+    // Gallery picker
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { pickedUri: Uri? ->
+        pickedUri?.let { uri ->
+            // Decode for preview
+            val bmp = try {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    BitmapFactory.decodeStream(input)
+                }
+            } catch (_: Exception) { null }
+            if (bmp != null) {
+                val newMessage = ChatMessage(
+                    image = bmp,
+                    isFromUser = true,
+                    text = "Plant image selected"
+                )
+                messages = messages + newMessage
+            }
+            // Upload for classification
+            scope.launch {
+                val classifyResult = try {
+                    val part = uriToMultipart(context, "file", uri)
+                    val res = withContext(Dispatchers.IO) {
+                        NetworkModule.backendApiService.classifyImage(part)
+                    }
+                    "Detected: ${res.label} (confidence ${(res.score * 100).toInt()}%)"
+                } catch (e: Exception) {
+                    "Image analysis failed: ${e.message ?: "unknown error"}"
+                }
+                val response = ChatMessage(
+                    text = classifyResult,
+                    isFromUser = false
+                )
+                messages = messages + response
+                scope.launch { listState.animateScrollToItem(messages.size - 1) }
+            }
+        }
+    }
+    
     // Check permissions on launch
     LaunchedEffect(Unit) {
         hasCameraPermission = context.checkSelfPermission(Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -118,10 +177,17 @@ fun ChatScreen() {
         // Add welcome message
         messages = listOf(
             ChatMessage(
-                text = "Welcome to KrishiSevak! 🌾\n\nI'm your AI farming assistant. You can:\n• Type your farming questions\n• Take photos of plants for disease detection\n• Use voice commands in your local language\n\nHow can I help you today?",
+                text = context.getString(com.example.krishisevak.R.string.chat_welcome_message),
                 isFromUser = false
             )
         )
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            try { mediaRecorder?.release() } catch (_: Exception) {}
+            try { mediaPlayer.release() } catch (_: Exception) {}
+        }
     }
     
     Column(
@@ -205,7 +271,7 @@ fun ChatScreen() {
                         modifier = Modifier.weight(1f),
                         placeholder = { 
                             Text(
-                                text = "Ask anything about farming...",
+                                text = context.getString(com.example.krishisevak.R.string.chat_hint),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
@@ -239,19 +305,50 @@ fun ChatScreen() {
                                                 )
                                                 messages = messages + response
                                                 scope.launch { listState.animateScrollToItem(messages.size - 1) }
+                                                // Optionally speak the response via TTS
+                                                scope.launch {
+                                                    try {
+                                                        val ttsResp = withContext(Dispatchers.IO) {
+                                                            NetworkModule.backendApiService.tts(responseText, preferredLanguage)
+                                                        }
+                                                        if (ttsResp.isSuccessful) {
+                                                            val body = ttsResp.body()
+                                                            if (body != null) {
+                                                                val audioOut = saveResponseToFile(context, body)
+                                                                playAudio(MediaPlayer(), audioOut)
+                                                            }
+                                                        }
+                                                    } catch (_: Exception) {}
+                                                }
                                             }
                                         }
                                     }
                                 ) {
                                     Icon(
                                         Icons.Default.Send,
-                                        contentDescription = "Send",
+                                        contentDescription = context.getString(com.example.krishisevak.R.string.send),
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
                             }
                         }
                     )
+                    
+                    // Camera button
+                    // Gallery button
+                    FloatingActionButton(
+                        onClick = {
+                            galleryLauncher.launch("image/*")
+                        },
+                        modifier = Modifier.size(48.dp),
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = context.getString(com.example.krishisevak.R.string.choose_from_gallery),
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
                     
                     // Camera button
                     FloatingActionButton(
@@ -267,7 +364,7 @@ fun ChatScreen() {
                     ) {
                         Icon(
                             Icons.Default.Camera,
-                            contentDescription = "Take Photo",
+                            contentDescription = context.getString(com.example.krishisevak.R.string.take_photo),
                             tint = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
@@ -276,35 +373,112 @@ fun ChatScreen() {
                     FloatingActionButton(
                         onClick = {
                             if (hasAudioPermission) {
-                                isRecording = !isRecording
-                                // Handle voice recording
-                                if (isRecording) {
-                                    // Start recording
-                                } else {
-                                    // Stop recording and process
-                                    val voiceMessage = ChatMessage(
-                                        text = "Voice message processed: 'What fertilizer is best for wheat?'",
-                                        isFromUser = true,
-                                        isVoiceMessage = true
-                                    )
-                                    messages = messages + voiceMessage
-                                    
-                                    // Send to backend chat
-                                    scope.launch {
-                                        val responseText = try {
-                                            val req = ChatRequestDto(message = voiceMessage.text)
-                                            val res = withContext(Dispatchers.IO) {
-                                                NetworkModule.backendApiService.chat(req)
-                                            }
-                                            res.text
-                                        } catch (e: Exception) {
-                                            "Chat request failed: ${e.message ?: "unknown error"}"
-                                        }
-                                        val response = ChatMessage(
-                                            text = responseText,
+                                if (!isRecording) {
+                                    try {
+                                        val outFile = File(context.cacheDir, "recording_${System.currentTimeMillis()}.m4a")
+                                        val recorder = MediaRecorder()
+                                        recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+                                        recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                                        recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                                        recorder.setAudioEncodingBitRate(128_000)
+                                        recorder.setAudioSamplingRate(44_100)
+                                        recorder.setOutputFile(outFile.absolutePath)
+                                        recorder.prepare()
+                                        recorder.start()
+                                        mediaRecorder = recorder
+                                        recordingFile = outFile
+                                        isRecording = true
+                                        messages = messages + ChatMessage(
+                                            text = context.getString(com.example.krishisevak.R.string.recording),
                                             isFromUser = false
                                         )
-                                        messages = messages + response
+                                    } catch (e: Exception) {
+                                        isRecording = false
+                                        messages = messages + ChatMessage(
+                                            text = context.getString(com.example.krishisevak.R.string.failed_to_start_recording, e.message ?: ""),
+                                            isFromUser = false
+                                        )
+                                    }
+                                } else {
+                                    val recorder = mediaRecorder
+                                    val outFile = recordingFile
+                                    mediaRecorder = null
+                                    recordingFile = null
+                                    try {
+                                        recorder?.stop()
+                                    } catch (_: Exception) {}
+                                    try { recorder?.release() } catch (_: Exception) {}
+                                    isRecording = false
+                                    if (outFile != null && outFile.exists()) {
+                                        val userVoiceMsg = ChatMessage(
+                                            text = context.getString(com.example.krishisevak.R.string.voice_message_sent),
+                                            isFromUser = true,
+                                            isVoiceMessage = true
+                                        )
+                                        messages = messages + userVoiceMsg
+                                        scope.launch {
+                                            val resultText = try {
+                                                val sessionBody = "default".toRequestBody("text/plain".toMediaType())
+                                                val ttsBody = "false".toRequestBody("text/plain".toMediaType())
+                                                val langBody: RequestBody? = preferredLanguage.toRequestBody("text/plain".toMediaType())
+                                                val audioPart = MultipartBody.Part.createFormData(
+                                                    name = "audio",
+                                                    filename = outFile.name,
+                                                    body = outFile.asRequestBody("audio/m4a".toMediaType())
+                                                )
+                                                val resp = withContext(Dispatchers.IO) {
+                                                    NetworkModule.backendApiService.voiceToChat(
+                                                        sessionId = sessionBody,
+                                                        tts = ttsBody,
+                                                        language = langBody,
+                                                        audio = audioPart
+                                                    )
+                                                }
+                                                if (resp.isSuccessful) {
+                                                    val body = resp.body()
+                                                    val contentType = resp.headers()["Content-Type"] ?: ""
+                                                    if (contentType.contains("application/json") && body != null) {
+                                                        val jsonStr = body.string()
+                                                        val obj = JSONObject(jsonStr)
+                                                        val reply = obj.optString("reply", "")
+                                                        if (reply.isNotBlank()) {
+                                                            try {
+                                                                val ttsResp = withContext(Dispatchers.IO) {
+                                                                    NetworkModule.backendApiService.tts(reply, preferredLanguage)
+                                                                }
+                                                                if (ttsResp.isSuccessful) {
+                                                                    val ttsBody = ttsResp.body()
+                                                                    if (ttsBody != null) {
+                                                                        val audioOut = saveResponseToFile(context, ttsBody)
+                                                                        playAudio(mediaPlayer, audioOut)
+                                                                    }
+                                                                }
+                                                            } catch (_: Exception) {}
+                                                        }
+                                                        reply.ifBlank { "(empty reply)" }
+                                                    } else if (body != null) {
+                                                        val audioOut = saveResponseToFile(context, body)
+                                                        playAudio(mediaPlayer, audioOut)
+                                                        "Voice processed."
+                                                    } else {
+                                                        "Voice processing failed: empty body"
+                                                    }
+                                                } else {
+                                                    "Voice processing failed: ${resp.code()}"
+                                                }
+                                            } catch (e: Exception) {
+                                                "Voice processing error: ${e.message ?: "unknown error"}"
+                                            }
+                                            messages = messages + ChatMessage(
+                                                text = resultText,
+                                                isFromUser = false
+                                            )
+                                        }
+                                    } else {
+                                        messages = messages + ChatMessage(
+                                            text = context.getString(com.example.krishisevak.R.string.no_recording_file),
+                                            isFromUser = false
+                                        )
                                     }
                                 }
                             } else {
@@ -319,7 +493,7 @@ fun ChatScreen() {
                     ) {
                         Icon(
                             Icons.Default.Mic,
-                            contentDescription = if (isRecording) "Stop Recording" else "Start Recording",
+                            contentDescription = if (isRecording) context.getString(com.example.krishisevak.R.string.stop_recording) else context.getString(com.example.krishisevak.R.string.start_recording),
                             tint = if (isRecording) 
                                 MaterialTheme.colorScheme.onError 
                             else 
@@ -438,4 +612,54 @@ private fun bitmapToMultipart(formField: String, bitmap: Bitmap): MultipartBody.
     val bytes = stream.toByteArray()
     val requestBody = bytes.toRequestBody("image/jpeg".toMediaType())
     return MultipartBody.Part.createFormData(formField, "image.jpg", requestBody)
+}
+
+private fun uriToMultipart(context: android.content.Context, formField: String, uri: Uri): MultipartBody.Part {
+    val contentResolver = context.contentResolver
+    val mime = contentResolver.getType(uri) ?: "image/jpeg"
+    val fileName = "image_${System.currentTimeMillis()}" + if (mime.contains("png")) ".png" else ".jpg"
+    val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
+    val requestBody = bytes.toRequestBody(mime.toMediaType())
+    return MultipartBody.Part.createFormData(formField, fileName, requestBody)
+}
+
+private fun saveResponseToFile(context: android.content.Context, body: ResponseBody): File {
+    val out = File(context.cacheDir, "tts_${System.currentTimeMillis()}.bin")
+    body.byteStream().use { input ->
+        FileOutputStream(out).use { output ->
+            val buffer = ByteArray(8 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read <= 0) break
+                output.write(buffer, 0, read)
+            }
+            output.flush()
+        }
+    }
+    return out
+}
+
+private fun playAudio(player: MediaPlayer, file: File) {
+    try {
+        player.reset()
+        player.setDataSource(file.absolutePath)
+        player.prepare()
+        player.start()
+    } catch (_: Exception) {}
+}
+
+private fun mapLanguageToCode(name: String?): String {
+    return when (name?.lowercase()?.trim()) {
+        "english" -> "en-in" // Indian English
+        "hindi" -> "hi"
+        "punjabi" -> "pa"
+        "bengali" -> "bn"
+        "tamil" -> "ta"
+        "telugu" -> "te"
+        "marathi" -> "mr"
+        "gujarati" -> "gu"
+        "kannada" -> "kn"
+        "malayalam" -> "ml"
+        else -> "en-in"
+    }
 }

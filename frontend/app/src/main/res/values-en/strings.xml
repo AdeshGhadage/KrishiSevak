@@ -13,14 +13,4 @@
     <string name="location_captured">Location captured successfully!</string>
     <string name="need_location">We need your farm location to provide accurate weather and local information.</string>
     <string name="chat_hint">Ask anything about farming...</string>
-    <string name="chat_welcome_message">Welcome to KrishiSevak! 🌾\n\nI\'m your AI farming assistant. You can:\n• Type your farming questions\n• Take photos of plants for disease detection\n• Use voice commands in your local language\n\nHow can I help you today?</string>
-    <string name="recording">Recording...</string>
-    <string name="failed_to_start_recording">Failed to start recording: %1$s</string>
-    <string name="voice_message_sent">[Voice message sent]</string>
-    <string name="no_recording_file">No recording file found</string>
-    <string name="take_photo">Take Photo</string>
-    <string name="choose_from_gallery">Choose from Gallery</string>
-    <string name="send">Send</string>
-    <string name="start_recording">Start Recording</string>
-    <string name="stop_recording">Stop Recording</string>
 </resources>

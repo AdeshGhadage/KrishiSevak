@@ -30,6 +30,17 @@ class Settings(BaseSettings):
     TTS_VOICE: str = os.getenv("TTS_VOICE", "en-us")
     TTS_SPEED_WPM: int = int(os.getenv("TTS_SPEED_WPM", "170"))
 
+    # Online STT/TTS providers
+    STT_PROVIDER: str = os.getenv("STT_PROVIDER", "local")  # local|openai
+    OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
+    OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "https://api.openai.com")
+    OPENAI_WHISPER_MODEL: str = os.getenv("OPENAI_WHISPER_MODEL", "whisper-1")
+
+    TTS_PROVIDER: str = os.getenv("TTS_PROVIDER", "espeak")  # espeak|elevenlabs
+    ELEVENLABS_API_KEY: str | None = os.getenv("ELEVENLABS_API_KEY")
+    ELEVENLABS_VOICE_ID: str = os.getenv("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")  # default example
+    ELEVENLABS_MODEL_ID: str = os.getenv("ELEVENLABS_MODEL_ID", "eleven_multilingual_v2")
+
     # ViT
     VIT_MODEL_DIR: str = os.getenv("VIT_MODEL_DIR", "./models/vit-crop-disease")
     VIT_LABELS_JSON: str = os.getenv("VIT_LABELS_JSON", "./models/vit-crop-disease/labels.json")

@@ -73,7 +73,7 @@ fun SimpleOnboardingScreen(
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "Welcome to KrishiSevak",
+            text = stringResource(id = com.example.krishisevak.R.string.welcome_title),
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
@@ -83,7 +83,7 @@ fun SimpleOnboardingScreen(
         Spacer(modifier = Modifier.height(8.dp))
         
         Text(
-            text = "Let's set up your farming profile",
+            text = stringResource(id = com.example.krishisevak.R.string.welcome_subtitle),
             fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -95,7 +95,7 @@ fun SimpleOnboardingScreen(
         OutlinedTextField(
             value = farmerName,
             onValueChange = { farmerName = it },
-            label = { Text("Farmer Name") },
+            label = { Text(stringResource(id = com.example.krishisevak.R.string.farmer_name)) },
             leadingIcon = { Icon(Icons.Default.Person, "Name") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
@@ -107,7 +107,7 @@ fun SimpleOnboardingScreen(
         OutlinedTextField(
             value = age,
             onValueChange = { if (it.all { char -> char.isDigit() }) age = it },
-            label = { Text("Age") },
+            label = { Text(stringResource(id = com.example.krishisevak.R.string.age)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
@@ -119,7 +119,7 @@ fun SimpleOnboardingScreen(
         OutlinedTextField(
             value = landArea,
             onValueChange = { landArea = it },
-            label = { Text("Land Area (in acres)") },
+            label = { Text(stringResource(id = com.example.krishisevak.R.string.land_area)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
@@ -133,10 +133,10 @@ fun SimpleOnboardingScreen(
             onExpandedChange = { showLanguageDropdown = !showLanguageDropdown }
         ) {
             OutlinedTextField(
-                value = languages.find { it.first == selectedLanguage }?.second ?: "Select Language",
+                value = languages.find { it.first == selectedLanguage }?.second ?: stringResource(id = com.example.krishisevak.R.string.preferred_language),
                 onValueChange = { },
                 readOnly = true,
-                label = { Text("Preferred Language") },
+                label = { Text(stringResource(id = com.example.krishisevak.R.string.preferred_language)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showLanguageDropdown) },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -194,7 +194,7 @@ fun SimpleOnboardingScreen(
                      selectedLanguage.isNotEmpty()
         ) {
             Text(
-                text = "Complete Setup",
+                text = stringResource(id = com.example.krishisevak.R.string.complete_setup),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold
             )

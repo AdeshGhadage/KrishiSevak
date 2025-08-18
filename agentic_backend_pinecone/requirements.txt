@@ -33,3 +33,4 @@ torch>=2.3.0; platform_system != "Darwin"  # macOS users: install torch separate
 
 # --- Audio utils ---
 pydub>=0.25.1
+python-magic>=0.4.27

@@ -65,8 +65,12 @@ async def voice_to_chat(session_id: str = Form("default"),
         result = get_agent().respond(session_id=session_id, user_text=text, stream=False)
         reply = result["text"]
         if tts:
-            wav_path = synthesize_to_wav(reply)
-            return FileResponse(wav_path, media_type="audio/wav", filename="reply.wav")
+            out_path = synthesize_to_wav(reply)
+            # Decide media type by extension
+            ext = os.path.splitext(out_path)[1].lower()
+            media = "audio/mpeg" if ext == ".mp3" else "audio/wav"
+            fname = "reply.mp3" if ext == ".mp3" else "reply.wav"
+            return FileResponse(out_path, media_type=media, filename=fname)
         else:
             return JSONResponse({"transcript": text, "reply": reply, "tool_calls": result.get("intermediate_steps")})
     finally:
@@ -81,3 +85,11 @@ async def image_classify(file: UploadFile = File(...)):
     if "error" in res:
         raise HTTPException(status_code=400, detail=res["error"])
     return ImageClassifyResponse(**res)
+
+@app.post("/v1/tts")
+async def tts(text: str = Form(...), language: str | None = Form(None)):
+    out_path = synthesize_to_wav(text, language=language)
+    ext = os.path.splitext(out_path)[1].lower()
+    media = "audio/mpeg" if ext == ".mp3" else "audio/wav"
+    fname = "speech.mp3" if ext == ".mp3" else "speech.wav"
+    return FileResponse(out_path, media_type=media, filename=fname)

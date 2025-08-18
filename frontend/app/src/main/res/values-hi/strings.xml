@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">कृषिसेवक</string>
+    <string name="welcome_title">कृषिसेवक में आपका स्वागत है</string>
+    <string name="welcome_subtitle">आइए आपकी खेती प्रोफ़ाइल सेट करें</string>
+    <string name="farmer_name">किसान का नाम</string>
+    <string name="age">आयु</string>
+    <string name="land_area">भूमि क्षेत्र (एकड़ में)</string>
+    <string name="preferred_language">पसंदीदा भाषा</string>
+    <string name="complete_setup">सेटअप पूरा करें</string>
+    <string name="getting_location">स्थान प्राप्त किया जा रहा है...</string>
+    <string name="get_current_location">वर्तमान स्थान प्राप्त करें</string>
+    <string name="farm_location">खेती स्थान</string>
+    <string name="location_captured">स्थान सफलतापूर्वक कैप्चर किया गया!</string>
+    <string name="need_location">सही मौसम और स्थानीय जानकारी के लिए हमें आपका स्थान चाहिए।</string>
+    <string name="chat_hint">खेती से संबंधित कुछ भी पूछें...</string>
+</resources>
