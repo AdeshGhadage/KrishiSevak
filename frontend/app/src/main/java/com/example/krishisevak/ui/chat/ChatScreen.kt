@@ -3,6 +3,7 @@ package com.example.krishisevak.ui.chat
 import android.Manifest
 import android.graphics.Bitmap
 import android.net.Uri
+import androidx.annotation.OptIn
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -30,9 +31,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.krishisevak.data.models.ChatRequestDto
+import com.example.krishisevak.data.remote.NetworkModule
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.text.SimpleDateFormat
 import java.util.*
+import java.io.ByteArrayOutputStream
+import java.io.File
 
 data class ChatMessage(
     val id: String = UUID.randomUUID().toString(),
@@ -81,19 +94,22 @@ fun ChatScreen() {
             )
             messages = messages + newMessage
             
-            // Simulate AI response
             scope.launch {
-                kotlinx.coroutines.delay(1500)
+                val classifyResult = try {
+                    val part = bitmapToMultipart("file", it)
+                    val res = withContext(Dispatchers.IO) {
+                        NetworkModule.backendApiService.classifyImage(part)
+                    }
+                    "Detected: ${'$'}{res.label} (confidence ${(res.score * 100).toInt()}%)"
+                } catch (e: Exception) {
+                    "Image analysis failed: ${'$'}{e.message ?: "unknown error"}"
+                }
                 val response = ChatMessage(
-                    text = "I can see your plant image. Let me analyze it for any diseases or issues. The plant appears to be healthy with good leaf color. Would you like me to provide specific care recommendations?",
+                    text = classifyResult,
                     isFromUser = false
                 )
                 messages = messages + response
-                
-                // Auto-scroll to bottom
-                scope.launch {
-                    listState.animateScrollToItem(messages.size - 1)
-                }
+                scope.launch { listState.animateScrollToItem(messages.size - 1) }
             }
         }
     }
@@ -211,16 +227,22 @@ fun ChatScreen() {
                                             messages = messages + userMessage
                                             currentMessage = ""
                                             
-                                            // Simulate AI response
                                             scope.launch {
-                                                kotlinx.coroutines.delay(1000)
-                                                val response = generateAIResponse(userMessage.text)
-                                                messages = messages + response
-                                                
-                                                // Auto-scroll to bottom
-                                                scope.launch {
-                                                    listState.animateScrollToItem(messages.size - 1)
+                                                val responseText = try {
+                                                    val req = ChatRequestDto(message = userMessage.text)
+                                                    val res = withContext(Dispatchers.IO) {
+                                                        NetworkModule.backendApiService.chat(req)
+                                                    }
+                                                    res.text
+                                                } catch (e: Exception) {
+                                                    "Chat request failed: ${'$'}{e.message ?: "unknown error"}"
                                                 }
+                                                val response = ChatMessage(
+                                                    text = responseText,
+                                                    isFromUser = false
+                                                )
+                                                messages = messages + response
+                                                scope.launch { listState.animateScrollToItem(messages.size - 1) }
                                             }
                                         }
                                     }
@@ -403,37 +425,10 @@ fun MessageBubble(message: ChatMessage) {
     }
 }
 
-private fun generateAIResponse(userMessage: String): ChatMessage {
-    val responses = when {
-        userMessage.contains("fertilizer", ignoreCase = true) -> listOf(
-            "For wheat, I recommend using DAP (Diammonium Phosphate) during sowing and Urea for top dressing. Apply 125 kg DAP + 65 kg Urea per hectare. The ideal ratio is 120:60:40 (NPK).",
-            "Consider soil testing first to determine exact nutrient requirements. Organic options include well-decomposed farmyard manure (5-7 tons per hectare) or vermicompost."
-        )
-        
-        userMessage.contains("weather", ignoreCase = true) -> listOf(
-            "Current weather looks favorable for most crops. Temperature is moderate with good humidity levels. Perfect for fieldwork today!",
-            "I recommend checking the 7-day forecast before planning irrigation or pesticide applications."
-        )
-        
-        userMessage.contains("disease", ignoreCase = true) -> listOf(
-            "Common crop diseases this season include leaf blight and powdery mildew. Early detection is key - look for yellowing leaves or white powdery spots.",
-            "For organic treatment, try neem oil spray (5ml per liter of water). For severe cases, copper-based fungicides are effective."
-        )
-        
-        userMessage.contains("price", ignoreCase = true) -> listOf(
-            "Current market prices: Wheat ₹2,125/quintal, Rice ₹2,850/quintal, Cotton ₹5,650/quintal. Prices are stable this week.",
-            "I suggest selling wheat now as prices are at seasonal high. Hold rice for better rates next month."
-        )
-        
-        else -> listOf(
-            "That's a great farming question! Based on current agricultural practices, I recommend consulting with local agricultural extension officers for region-specific advice.",
-            "I understand your concern. Could you provide more details about your specific crop or farming situation so I can give you more targeted advice?",
-            "Thank you for asking! This is an important aspect of farming. Would you like me to break this down into specific steps or explain the process in detail?"
-        )
-    }
-    
-    return ChatMessage(
-        text = responses.random(),
-        isFromUser = false
-    )
+private fun bitmapToMultipart(formField: String, bitmap: Bitmap): MultipartBody.Part {
+    val stream = ByteArrayOutputStream()
+    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
+    val bytes = stream.toByteArray()
+    val requestBody = bytes.toRequestBody("image/jpeg".toMediaType())
+    return MultipartBody.Part.createFormData(formField, "image.jpg", requestBody)
 }
