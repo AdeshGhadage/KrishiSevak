@@ -289,10 +289,21 @@ fun ChatScreen() {
                                     )
                                     messages = messages + voiceMessage
                                     
-                                    // Generate AI response
+                                    // Send to backend chat
                                     scope.launch {
-                                        kotlinx.coroutines.delay(1000)
-                                        val response = generateAIResponse(voiceMessage.text)
+                                        val responseText = try {
+                                            val req = ChatRequestDto(message = voiceMessage.text)
+                                            val res = withContext(Dispatchers.IO) {
+                                                NetworkModule.backendApiService.chat(req)
+                                            }
+                                            res.text
+                                        } catch (e: Exception) {
+                                            "Chat request failed: ${e.message ?: "unknown error"}"
+                                        }
+                                        val response = ChatMessage(
+                                            text = responseText,
+                                            isFromUser = false
+                                        )
                                         messages = messages + response
                                     }
                                 }
